@@ -1,0 +1,505 @@
+================================================================================
+CHORE SCHEDULER - LEARNING NOTES & REFERENCE
+================================================================================
+Project: Sharehouse Chore Scheduler with Raspberry Pi Interface
+Date: December 4, 2025
+
+================================================================================
+PROJECT OVERVIEW
+================================================================================
+A web app for managing household chores with:
+- Raspberry Pi connected to LCD screen and speaker
+- Backend: Python (FastAPI + PostgreSQL)
+- Frontend: TBD
+- Goal: Learn Python, databases, and full-stack development
+
+================================================================================
+CURRENT SETUP
+================================================================================
+✅ Docker Compose with:
+   - PostgreSQL database (port 5432)
+   - FastAPI backend (port 8000)
+✅ Dependencies: FastAPI, SQLAlchemy, Uvicorn, psycopg2, Pydantic
+✅ Basic project structure in place
+
+================================================================================
+KEY CONCEPTS LEARNED
+================================================================================
+
+1. FASTAPI vs UVICORN
+   - FastAPI = Web framework (defines routes, request handling, validation)
+   - Uvicorn = ASGI server (runs the FastAPI app, handles HTTP)
+   - You NEED both! FastAPI doesn't include a server
+   - Analogy: Django (framework) needs Gunicorn (server)
+   
+   Running options:
+   - Development: uvicorn app.main:app --reload
+   - Production: gunicorn with uvicorn workers
+
+2. DOCKER & VIRTUAL ENVIRONMENTS
+   - DON'T need to "activate" .venv in Docker
+   - Three ways to use venv in containers:
+     a) uv run uvicorn ... (RECOMMENDED)
+     b) ENV PATH="/app/.venv/bin:$PATH"
+     c) Direct path: .venv/bin/uvicorn ...
+   
+   - Activation is for interactive shells only
+   - Docker CMD exec form doesn't use shell
+
+3. PYTHON SLIM IMAGES
+   - python:3.14-slim doesn't include curl
+   - Options:
+     a) Use official uv image: ghcr.io/astral-sh/uv:python3.14-bookworm-slim
+     b) Install curl temporarily, then remove it
+     c) Copy installed binaries to /usr/local/bin/
+
+4. SOURCE COMMAND IN DOCKER
+   - 'source' is bash-specific (built-in)
+   - Slim images use sh/dash, not bash
+   - Exit code 127 = "command not found"
+
+================================================================================
+LEARNING PATH (SUGGESTED)
+================================================================================
+
+Step 1: DATABASE DESIGN
+   - Think about entities (Jobs, People, ???)
+   - Define relationships between entities
+   - Sketch schema on paper/whiteboard first
+   - Consider: What makes a "job"? What attributes does it need?
+
+Step 2: SQLALCHEMY MODELS
+   - Learn how to define database tables as Python classes
+   - Understand ORM (Object-Relational Mapping)
+   - Practice with relationships (one-to-many, many-to-many)
+
+Step 3: FASTAPI ENDPOINTS
+   - Build CRUD operations (Create, Read, Update, Delete)
+   - Learn about request/response models (Pydantic)
+   - Understand routing and path parameters
+
+Step 4: TESTING
+   - Test endpoints with Postman, curl, or httpie
+   - Verify database operations work correctly
+
+Step 5: FRONTEND
+   - Choose a framework (React, Vue, vanilla JS, etc.)
+   - Connect to backend API
+   - Build UI for chore submission
+
+Step 6: RASPBERRY PI INTEGRATION
+   - Display interface on LCD screen
+   - Add sound notifications via speaker
+   - Consider kiosk mode for the Pi
+
+================================================================================
+QUESTIONS TO THINK ABOUT (DATA MODELING)
+================================================================================
+
+Entity Design:
+- What entities do you need?
+  * Jobs/Chores? 
+  * People/Users?
+  * Categories?
+  * Schedules?
+  
+- What are the relationships?
+  * One person to many jobs?
+  * Many people to one job?
+  * Recurring vs one-time tasks?
+
+Attributes for a Job:
+- Task description
+- Assigned person
+- Due date/time
+- Priority level?
+- Status (pending, in-progress, completed)?
+- Category (cleaning, cooking, maintenance)?
+- Recurring? (daily, weekly, monthly)
+- Completion timestamp?
+- Points/rewards system?
+
+Additional Features to Consider:
+- Rotation of chores among housemates?
+- Notifications/reminders?
+- History/audit log?
+- Rewards or gamification?
+
+================================================================================
+DOCKER COMMANDS REFERENCE
+================================================================================
+
+Build:
+  docker build -t backend ./backend
+
+Run:
+  docker run -it backend
+  
+Docker Compose:
+  docker-compose up          # Start all services
+  docker-compose down        # Stop all services
+  docker-compose build       # Rebuild containers
+  docker-compose logs -f     # Follow logs
+
+================================================================================
+PROJECT FILES STRUCTURE
+================================================================================
+
+chore-schedulor/
+├── docker-compose.yml         # Service orchestration
+├── README.md
+├── backend/
+│   ├── Dockerfile
+│   ├── pyproject.toml        # Python dependencies
+│   ├── uv.lock
+│   ├── README.md
+│   └── app/
+│       ├── __init__.py
+│       ├── database.py       # Database connection
+│       └── (more files TBD)
+
+TO CREATE:
+- app/main.py              # FastAPI app entry point
+- app/models.py            # SQLAlchemy database models
+- app/schemas.py           # Pydantic request/response models
+- app/routers/             # API endpoints
+- frontend/                # Frontend application
+
+================================================================================
+RESOURCES TO EXPLORE
+================================================================================
+
+FastAPI:
+- Official docs: https://fastapi.tiangolo.com/
+- Tutorial: https://fastapi.tiangolo.com/tutorial/
+
+SQLAlchemy:
+- Official docs: https://docs.sqlalchemy.org/
+- ORM tutorial: https://docs.sqlalchemy.org/en/20/orm/quickstart.html
+
+PostgreSQL:
+- Official docs: https://www.postgresql.org/docs/
+
+Docker:
+- Docker Compose docs: https://docs.docker.com/compose/
+
+================================================================================
+SYSTEM DESIGN & ARCHITECTURE
+================================================================================
+
+THE DATA FLOW (Request to Database)
+-----------------------------------
+
+Frontend → FastAPI → SQLAlchemy → PostgreSQL
+   |          |          |            |
+ (JSON)   (validates)  (ORM)      (stores)
+
+Step-by-step breakdown:
+
+1. FRONTEND SENDS REQUEST
+   POST /jobs
+   {
+     "person": "Alice",
+     "task": "Clean kitchen",
+     "time": "2025-12-05T18:00:00",
+     "message": "Don't forget the fridge"
+   }
+
+2. FASTAPI RECEIVES & VALIDATES
+   - Endpoint receives HTTP request
+   - Pydantic schema validates the JSON
+   - Ensures required fields exist and types are correct
+   - Returns 422 error if validation fails
+   - Passes validated data to endpoint function
+
+3. SQLALCHEMY TRANSFORMS TO DATABASE MODEL
+   - Endpoint creates SQLAlchemy model instance
+   - Example: new_job = Job(person="Alice", task="Clean kitchen", ...)
+   - SQLAlchemy translates Python objects → SQL statements
+   - Manages database session and transactions
+
+4. POSTGRESQL STORES THE DATA
+   - SQLAlchemy executes: INSERT INTO jobs ...
+   - Database generates auto-increment fields (like job_id)
+   - Data is persisted to disk
+   - Returns success/failure
+
+5. RESPONSE FLOWS BACK
+   - PostgreSQL → SQLAlchemy (database row)
+   - SQLAlchemy → Pydantic (Python object)
+   - Pydantic → FastAPI (validated JSON)
+   - FastAPI → Frontend (HTTP response)
+   - Usually returns the created job with its new job_id
+
+THE THREE LAYERS OF DATA REPRESENTATION
+---------------------------------------
+
+You need THREE representations of the same data:
+
+1. PYDANTIC SCHEMA (schemas.py) - API Layer
+   Purpose: Validation and serialization
+   - Validates incoming requests
+   - Serializes outgoing responses
+   - Auto-generates API documentation
+   - Type hints for IDE support
+   
+   Two schemas per resource:
+   
+   a) CREATE SCHEMA (Input from frontend)
+      class JobCreate(BaseModel):
+          person: str
+          task: str
+          time: datetime
+          message: str | None = None
+      
+      - NO id field (database generates it)
+      - Only fields user can set
+      - Used in POST requests
+   
+   b) RESPONSE SCHEMA (Output to frontend)
+      class Job(BaseModel):
+          id: int
+          person: str
+          task: str
+          time: datetime
+          message: str | None = None
+          created_at: datetime
+          
+          class Config:
+              from_attributes = True  # Converts from SQLAlchemy
+      
+      - Includes id and auto-generated fields
+      - Represents full database record
+      - Used in GET/POST responses
+
+2. SQLALCHEMY MODEL (models.py) - Database Layer
+   Purpose: Object-Relational Mapping (ORM)
+   - Defines database table structure
+   - Maps Python classes to SQL tables
+   - Handles relationships between tables
+   - Manages database operations (CRUD)
+   
+   Example structure:
+   class Job(Base):
+       __tablename__ = "jobs"
+       
+       id = Column(Integer, primary_key=True, index=True)
+       person = Column(String)
+       task = Column(String)
+       time = Column(DateTime)
+       message = Column(String, nullable=True)
+       created_at = Column(DateTime, default=datetime.utcnow)
+
+3. POSTGRESQL TABLE - Storage Layer
+   Purpose: Physical data storage
+   - Actual table in database
+   - Columns, constraints, indexes
+   - ACID compliance (transactions)
+   - Data persistence
+
+FASTAPI ENDPOINT STRUCTURE
+--------------------------
+
+Basic pattern:
+
+@app.post("/jobs", response_model=Job, status_code=201)
+async def create_job(job: JobCreate, db: Session = Depends(get_db)):
+    # job parameter is validated automatically by Pydantic
+    # db parameter is database session injected by FastAPI
+    
+    # 1. Convert Pydantic schema to SQLAlchemy model
+    db_job = JobModel(**job.dict())
+    
+    # 2. Add to database session
+    db.add(db_job)
+    
+    # 3. Commit transaction
+    db.commit()
+    
+    # 4. Refresh to get generated fields
+    db.refresh(db_job)
+    
+    # 5. Return (automatically converted to response_model)
+    return db_job
+
+Key concepts:
+- request validation via type hints (job: JobCreate)
+- dependency injection (db: Session = Depends(get_db))
+- response_model for output validation
+- status_code for HTTP response codes
+- automatic JSON serialization
+
+DATABASE SESSION MANAGEMENT
+---------------------------
+
+Use dependency injection for database sessions:
+
+# In database.py
+from sqlalchemy.orm import sessionmaker
+
+SessionLocal = sessionmaker(bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# In endpoints
+def create_job(job: JobCreate, db: Session = Depends(get_db)):
+    # db is automatically created and cleaned up
+
+This ensures:
+- Sessions are properly closed
+- No connection leaks
+- Thread-safe operations
+- Transaction management
+
+TESTING STRATEGY
+----------------
+
+Current phase: Testing API layer with minimal database interaction
+
+Approach 1: IN-MEMORY STORAGE (Simplest for initial testing)
+   - Store jobs in Python list/dict
+   - Test API contract without database complexity
+   - Fast iteration and debugging
+   - Good for validating schemas and endpoints
+
+Approach 2: TEST DATABASE
+   - Use SQLite in-memory or separate test PostgreSQL
+   - Test full integration
+   - Verify database operations
+   - More realistic but more setup
+
+Approach 3: MOCKING
+   - Mock database layer
+   - Test API logic in isolation
+   - Fast but requires mock setup
+
+Testing tools:
+- pytest: Test framework
+- TestClient (from FastAPI): Test HTTP endpoints
+- pytest-asyncio: Test async endpoints
+
+Example test structure:
+from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+def test_create_job():
+    response = client.post("/jobs", json={
+        "person": "Alice",
+        "task": "Clean kitchen",
+        "time": "2025-12-05T18:00:00"
+    })
+    assert response.status_code == 201
+    assert response.json()["person"] == "Alice"
+
+IMPORTANT DESIGN DECISIONS TO CONSIDER
+--------------------------------------
+
+1. ID GENERATION
+   Q: Should frontend send job_id, or database generate it?
+   A: Database should generate (auto-increment or UUID)
+   Why: Prevents conflicts, ensures uniqueness
+
+2. VALIDATION
+   Q: What if invalid person name?
+   Q: Should time be in the future?
+   Q: Required vs optional fields?
+   Think about: Business logic validation in addition to type checking
+
+3. TIMESTAMPS
+   Q: created_at - who sets it?
+   A: Database default (datetime.utcnow)
+   Q: updated_at - do you need it?
+   Q: completed_at - when job is done?
+
+4. STATUS MANAGEMENT
+   Q: How to track job lifecycle?
+   Options: 
+   - Boolean: is_completed
+   - Enum: pending, in_progress, completed, cancelled
+   - State machine: Define valid transitions
+
+5. ERROR HANDLING
+   Q: What happens when database is down?
+   Q: What if duplicate job submitted?
+   Q: How to communicate errors to frontend?
+   Use: HTTPException with appropriate status codes
+
+6. DATA RELATIONSHIPS
+   Q: Should "person" be just a string or reference to Users table?
+   Q: Task categories - separate table?
+   Q: Recurring jobs - how to model?
+   Think about: Normalization vs simplicity
+
+PYTHON VERSION COMPATIBILITY
+----------------------------
+
+Issue: Python 3.14 (rc2) has compatibility issues with Pydantic/FastAPI
+Solution: Use Python 3.12 or 3.13 (stable, well-supported)
+
+To switch Python version with uv:
+  uv venv --python 3.12
+  uv sync
+
+LINTING AND CODE QUALITY
+------------------------
+
+Recommended tools:
+- Ruff: Fast linter + formatter (all-in-one)
+- mypy: Static type checker
+
+Install dev dependencies:
+  uv sync --extra dev
+  or
+  uv add --dev ruff mypy
+
+Run tools:
+  ruff check .        # Lint
+  ruff format .       # Format
+  mypy .             # Type check
+
+================================================================================
+CURRENT PROGRESS
+================================================================================
+
+✅ Docker environment configured
+✅ Python 3.12 virtual environment
+✅ FastAPI application created (app/main.py)
+✅ Pydantic schemas defined (app/schemas.py)
+   - JobCreate (input)
+   - Job (response)
+✅ Basic endpoints implemented
+   - GET / (health check)
+   - GET /jobs/{job_id}
+   - POST /jobs
+✅ Tests written (tests/schemas.py)
+✅ Development tools installed (ruff, mypy, pytest)
+
+NEXT: Complete the API → Database integration
+1. Set up database connection (database.py)
+2. Create SQLAlchemy models (models.py)
+3. Implement database operations in endpoints
+4. Test full flow: API request → validation → database → response
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. Design your data model (entities and relationships)
+2. Create SQLAlchemy models in app/models.py
+3. Set up database connection in app/database.py
+4. Create FastAPI app in app/main.py
+5. Build your first endpoint (e.g., GET /jobs)
+6. Test with curl or Postman
+7. Iterate and expand
+
+Remember: The goal is to LEARN, not just to finish. Take time to understand
+each concept. Ask "why" questions. Experiment. Break things. Fix them.
+
+================================================================================
