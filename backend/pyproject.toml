@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "chore-scheduler-backend"
+version = "0.1.0"
+description = "Python backend for the web application"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi",
+    "sqlalchemy",
+    "uvicorn[standard]",
+    "psycopg2-binary",
+    "python-dotenv",
+    "pydantic",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==7.4.3",
+    "pytest-asyncio==0.21.1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

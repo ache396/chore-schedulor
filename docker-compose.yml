@@ -1,0 +1,26 @@
+version:
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: plantation
+      POSTGRES_PASSWORD: worker
+      POSTGRES_DB: chore_scheduler
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgrestorage:/var/lib/postgresql/data
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      -postgres
+    environment:
+      - DATABASE_URL=postgresql://plantation:worker@postgres:5432/chore_scheduler
+    volumes:
+      - ./backend:/app
+
+volumes:
+  postgres_data:
